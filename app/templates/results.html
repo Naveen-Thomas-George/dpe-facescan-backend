@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="title">✨ Matched Photos ✨</h2>
+
+<div id="results" class="gallery"></div>
+<button id="download-all" class="download-btn">Download All Photos (ZIP)</button>
+
+<script>
+const container = document.getElementById("results");
+const results = JSON.parse(sessionStorage.getItem("searchResults") || "[]");
+
+if (results.length === 0) {
+  container.innerHTML = "<p class='no-results'>❌ No photos found. Try another selfie.</p>";
+} else {
+  results.forEach(r => {
+    const imgCard = document.createElement("div");
+    imgCard.className = "photo-card";
+
+    const img = document.createElement("img");
+    img.src = r.thumb || r.url;
+    img.alt = "Matched photo";
+    img.className = "photo";
+    img.dataset.url = r.url;   // ✅ Save full URL for download
+
+    imgCard.appendChild(img);
+    container.appendChild(imgCard);
+  });
+}
+
+document.getElementById("download-all").addEventListener("click", () => {
+    const photos = results.map(r => r.url);  // ✅ use real URLs from search results
+
+    fetch("/download_zip", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ urls: photos })
+    })
+    .then(res => {
+        if (!res.ok) throw new Error("Failed to download ZIP");
+        return res.blob();
+    })
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "matched_photos.zip";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+    })
+    .catch(err => {
+        alert("Error downloading photos: " + err.message);
+    });
+});
+</script>
+
+<style>
+/* General Page Styling */
+.title {
+  text-align: center;
+  margin: 20px 0;
+  font-size: 2rem;
+  color: #333;
+  font-weight: bold;
+}
+
+.no-results {
+  text-align: center;
+  font-size: 1.2rem;
+  color: #888;
+  margin-top: 30px;
+}
+
+/* Gallery Grid */
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+  padding: 10px;
+}
+
+/* Individual photo card */
+.photo-card {
+  background: #fff;
+  border-radius: 15px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.photo-card:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+}
+
+/* Image styling */
+.photo {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 15px;
+}
+
+/* Download button */
+.download-btn {
+  display: block;
+  margin: 30px auto;
+  padding: 12px 24px;
+  background: #4cafef;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.download-btn:hover {
+  background: #2196f3;
+}
+</style>
+{% endblock %}

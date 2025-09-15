@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="upload-container">
+  <div class="upload-card">
+    <h2 class="title">📸 Find My Photos</h2>
+    <p class="subtitle">Upload or take a selfie to find your event photos instantly!</p>
+
+    <form id="search-form" class="upload-form">
+      <label for="selfie" class="file-label">
+        <span>Click to Upload / Capture Selfie</span>
+        <input type="file" id="selfie" name="selfie" accept="image/*" capture="user" required hidden>
+      </label>
+      <button type="submit" class="btn-search">🔍 Search</button>
+    </form>
+  </div>
+</div>
+
+<script>
+document.getElementById("search-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const fileInput = document.getElementById("selfie");
+  if (!fileInput.files.length) return;
+
+  const formData = new FormData();
+  formData.append("selfie", fileInput.files[0]);
+
+  const res = await fetch("/api/search", { method: "POST", body: formData });
+  const data = await res.json();
+
+  sessionStorage.setItem("searchResults", JSON.stringify(data.matches));
+  window.location.href = "/results";
+});
+</script>
+
+<style>
+/* Container Centering */
+.upload-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 90vh;
+  background: linear-gradient(135deg, #f0f4f9, #d9e4f5);
+  padding: 20px;
+}
+
+/* Card Styling */
+.upload-card {
+  background: #fff;
+  padding: 2.5rem;
+  border-radius: 20px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  text-align: center;
+  max-width: 400px;
+  width: 100%;
+  animation: fadeIn 0.6s ease-in-out;
+}
+
+.title {
+  font-size: 1.8rem;
+  margin-bottom: 10px;
+  color: #2d3748;
+}
+
+.subtitle {
+  font-size: 0.95rem;
+  color: #718096;
+  margin-bottom: 25px;
+}
+
+/* File Upload Button */
+.file-label {
+  display: block;
+  padding: 15px;
+  border: 2px dashed #4a90e2;
+  border-radius: 15px;
+  cursor: pointer;
+  margin-bottom: 20px;
+  color: #4a90e2;
+  font-weight: 500;
+  transition: 0.3s;
+}
+.file-label:hover {
+  background: #f0f8ff;
+  border-color: #1e6fe3;
+}
+
+/* Button */
+.btn-search {
+  background: #4a90e2;
+  color: #fff;
+  padding: 12px 25px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: bold;
+  transition: 0.3s;
+}
+.btn-search:hover {
+  background: #1e6fe3;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+/* Animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+</style>
+{% endblock %}

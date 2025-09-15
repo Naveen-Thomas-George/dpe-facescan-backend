@@ -1,0 +1,25 @@
+    # Ignore the Python virtual environment
+    venv/
+    .venv/
+
+    # Ignore Python cache files
+    __pycache__/
+    *.pyc
+    *.pyo
+    *.pyd
+
+    # Ignore local data and media folders
+    /data/
+    /tmp/
+
+    # Ignore IDE and OS-specific files
+    .vscode/
+    .idea/
+    *.DS_Store
+
+    # Ignore local AI model caches (if they are in the project)
+    .insightface/
+
+    # Ignore the sample event photos
+    sample_event/
+    
