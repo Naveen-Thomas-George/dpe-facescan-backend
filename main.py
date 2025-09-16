@@ -24,7 +24,7 @@ origins = [
     "http://localhost:8080",  # <-- Add this line
     "http://192.168.56.1:8080",  # <-- Add this line
 
-    "https://gentle-smoke-0f0a7e900.azurestaticapps.net"
+    "https://thankful-ground-041c59400.2.azurestaticapps.net"
 ]
 
 # Add CORS middleware to allow communication with the frontend
