@@ -2,6 +2,8 @@ import io
 import os
 import zipfile
 import requests
+import numpy as np
+from PIL import Image
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request, Depends
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,23 +13,21 @@ from sqlalchemy import select
 from app.config import settings
 from app.db import Base, engine, get_db
 from app.models import Event, Photo
-from app.services.face import embed_image_bytes
 from app.services.index import load_or_create_index, search
 
+import insightface
 
+# ------------------ Initialize App ------------------
 app = FastAPI(title="CUBYCSPO API")
 
-# Define allowed origins for your React frontend
 origins = [
     "http://localhost:5173",
     "http://localhost:3000",
-    "http://localhost:8080",  # <-- Add this line
-    "http://192.168.56.1:8080",  # <-- Add this line
-
+    "http://localhost:8080",
+    "http://192.168.56.1:8080",
     "https://thankful-ground-041c59400.2.azurestaticapps.net"
 ]
 
-# Add CORS middleware to allow communication with the frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -36,9 +36,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Create database tables on startup
 Base.metadata.create_all(bind=engine)
 
+# ------------------ Load InsightFace Model ------------------
+print("Loading InsightFace model...")
+insight_model = insightface.app.FaceAnalysis(name="buffalo_l", providers=['CPUExecutionProvider'])
+insight_model.prepare(ctx_id=0)
+print("InsightFace model loaded ✅")
+
+def embed_image_bytes(img_bytes: bytes) -> np.ndarray:
+    """Extract a 512-d face embedding from image bytes."""
+    img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+    faces = insight_model.get(np.array(img))
+    if len(faces) == 0:
+        return np.zeros(512, dtype="float32")
+    return faces[0].normed_embedding.astype("float32")
+
+# ------------------ API Routes ------------------
 
 @app.post("/api/search")
 async def api_search(
@@ -58,10 +72,8 @@ async def api_search(
         return {"matches": [], "note": "The photo index is empty. Please ingest photos first."}
 
     sims, idxs = search(index, emb, top_k=settings.TOP_K)
-    
-    # This section is a bit slow. Let's optimize it to run a single database query.
+
     matched_ids = [int(ids[i]) for i in idxs.tolist() if i >= 0]
-    
     if not matched_ids:
         return {"matches": []}
 
@@ -69,19 +81,14 @@ async def api_search(
     photo_results = db.execute(
         select(Photo).where(Photo.id.in_(matched_ids))
     ).scalars().all()
-    
-    # Create a dictionary for quick lookups
     photos_by_id = {p.id: p for p in photo_results}
 
     matches = []
     for sim, i in zip(sims.tolist(), idxs.tolist()):
         if i < 0:
             continue
-        
         photo_id = int(ids[i])
         photo = photos_by_id.get(photo_id)
-
-        # Apply threshold and format the response
         if photo and (settings.FAISS_METRIC != "cosine" or sim >= settings.MATCH_THRESHOLD):
             matches.append({
                 "photo_id": photo.id,
@@ -107,7 +114,6 @@ async def download_zip(request: Request):
             try:
                 response = requests.get(url, timeout=10)
                 if response.status_code == 200:
-                    # Get the file extension from the URL
                     file_extension = os.path.splitext(url)[1] or ".jpg"
                     zf.writestr(f"photo_{i+1}{file_extension}", response.content)
             except Exception as e:
@@ -124,5 +130,4 @@ async def download_zip(request: Request):
 
 @app.get("/healthz")
 async def healthz():
-    """A simple health check endpoint."""
     return {"status": "ok"}

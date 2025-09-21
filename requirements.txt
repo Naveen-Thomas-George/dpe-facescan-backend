@@ -28,3 +28,14 @@ python-multipart
 requests
 
 azure-storage-blob
+
+fastapi
+uvicorn
+psycopg2-binary
+sqlalchemy
+python-multipart
+azure-storage-blob
+faiss-cpu
+pydantic
+pydantic-settings
+python-dotenv
